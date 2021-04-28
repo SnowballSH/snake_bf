@@ -1,0 +1,22 @@
+program = _{ SOI ~ TERMINATOR* ~ (stmt ~ TERMINATOR+) * ~ stmt? ~ EOI }
+
+TERMINATOR = _{ NEWLINE | ";" }
+WHITESPACE = _{ " " | "\t" }
+
+integer = @{ ASCII_DIGIT+ }
+identifier = @{ !keyword ~ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")* }
+keyword = @{
+    "let"
+}
+
+term = _{ integer | identifier }
+
+expression = _{ term }
+
+expression_stmt = { expression }
+let_assign = { "let" ~ identifier ~ "=" ~ expression }
+
+stmt = _{
+    expression_stmt |
+    let_assign
+}
