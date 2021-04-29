@@ -60,6 +60,9 @@ impl ByteCodeGen {
                 let n = self.compile_expr(node.1);
                 match n {
                     Ok(x) => {
+                        if x.1 == Type::Unit {
+                            return Err("Cannot assign to Unit type".to_string())
+                        }
                         self.variables.insert(node.0.to_string(), x.1);
                         res.extend(x.0);
                         res.push(Instruction::SetVar(node.0));

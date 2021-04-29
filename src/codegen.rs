@@ -1,6 +1,7 @@
 use crate::bytecode::Instruction;
 use std::collections::HashMap;
-use crate::builtins::get_builtin;
+use crate::builtins::{get_builtin, builtin_type};
+use crate::types::Type;
 
 #[derive(Debug, Clone, Copy, Default)]
 struct Alloc {
@@ -22,6 +23,7 @@ impl<'a> CodeGen<'a> {
         let mut res = String::new();
         for _ in 0..size {
             let alloc = self.allocations.pop().unwrap();
+            self.current_cell -= alloc.size;
             res += "<[-]".repeat(alloc.size).as_str();
         }
         res
@@ -39,15 +41,15 @@ impl<'a> CodeGen<'a> {
         let mut res = String::new();
         match ins {
             Instruction::Byte(x) => {
-                self.allocate(1);
+                self.allocate(Type::Byte.size());
                 res += &("+".repeat(x as usize) + ">");
             }
 
             Instruction::Getvar(x) => {
                 let alloc = self.variables.get(x)
                     .unwrap().to_owned(); // testified in compiler
-                let y = "<".repeat(alloc.size);
-                let x = ">".repeat(alloc.size);
+                let y = "<".repeat(self.current_cell - alloc.start);  // [- # # - - *]  * = 5, # = 1, 2
+                let x = ">".repeat(self.current_cell - alloc.start);
 
                 // [ - * - - # ]  # = * -> <<<
                 res += format!("{}[{}+>+<{}-]{}>[<{}+{}>-]", y, x, y, x, y, x).as_str();
@@ -69,10 +71,14 @@ impl<'a> CodeGen<'a> {
             }
 
             Instruction::Call(size) => {
-                let callee = get_builtin(self.functions.pop().unwrap(), size).unwrap();
+                let name = self.functions.pop().unwrap();
+                let callee = get_builtin(name, size).unwrap();
                 res += callee.as_str();
-                dbg!(&self.allocations);
-                res += &*self.clean(size);
+                //dbg!(&self);
+                //res += &*self.clean(size);
+
+                let t = builtin_type(name).unwrap();
+                self.allocate(t.size());
             }
         };
         res

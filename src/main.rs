@@ -1,5 +1,6 @@
 use crate::grammar::parse;
 use crate::bytecode::ByteCodeGen;
+use std::fs;
 
 mod grammar;
 mod codegen;
@@ -9,9 +10,7 @@ mod builtins;
 
 fn main() {
     let program = "
-let x = 65
-let y = x
-print(x, y)
+print(sum(45, 20))
 ";
     let res = parse(program);
     // dbg!(&res);
@@ -23,7 +22,8 @@ print(x, y)
                 Ok(x) => {
                     let mut genner = codegen::CodeGen::default();
                     let res = genner.gen(x);
-                    dbg!(res);
+                    dbg!(&res);
+                    fs::write("test.bf", res).expect("Unable to write file");
                 }
                 Err(e) => {
                     eprintln!("{}", e);

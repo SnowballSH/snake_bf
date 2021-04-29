@@ -13,4 +13,12 @@ impl Type {
             Type::BuiltinFunction(_) => "Builtin Function"
         }.to_string()
     }
+
+    pub fn size(&self) -> usize {
+        match self {
+            Type::Byte => 1,
+            Type::Unit => 0,
+            Type::BuiltinFunction(_) => 0
+        }
+    }
 }
