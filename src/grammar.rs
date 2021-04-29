@@ -9,7 +9,7 @@ use pest::iterators::{Pairs, Pair};
 pub enum Expression<'a> {
     Int(i64),
     Iden(&'a str),
-    Call, // TODO
+    Call((Box<Expression<'a>>, Vec<Expression<'a>>)), // callee, args
 }
 
 #[derive(Debug)]
@@ -25,11 +25,34 @@ pub type Program<'a> = Vec<Statement<'a>>;
 pub struct TSParser;
 
 fn parse_expression(pair: Pair<Rule>) -> Expression {
-    match pair.as_rule() {
-        Rule::integer => Expression::Int(pair.as_str().parse().unwrap()),
-        Rule::identifier => Expression::Iden(pair.as_str()),
+    let mut inner = pair.into_inner();
+    let base = inner.next().unwrap();
+    let mut res = match base.as_rule() {
+        Rule::integer => Expression::Int(base.as_str().parse().unwrap()),
+        Rule::identifier => Expression::Iden(base.as_str()),
         _ => unreachable!()
+    };
+
+    loop {
+        let dec = inner.next();
+        match dec {
+            Some(x) => {
+                match x.as_rule() {
+                    Rule::call => {
+                        let args: Vec<Pair<Rule>> = x.into_inner().collect();
+                        res = Expression::Call((
+                            Box::new(res),
+                            args.into_iter().map(|w| parse_expression(w)).collect(),
+                        ))
+                    }
+                    _ => unreachable!()
+                }
+            }
+            None => break
+        }
     }
+
+    res
 }
 
 fn parse_statement(pair: Pair<Rule>) -> Statement {
@@ -64,6 +87,7 @@ fn parse_program(pairs: Pairs<Rule>) -> Program {
 
 pub fn parse(program: &str) -> Result<Program, pest::error::Error<Rule>> {
     let res = TSParser::parse(Rule::program, program);
+    // dbg!(&res);
     match res {
         Ok(pairs) => {
             Ok(parse_program(pairs))

@@ -9,9 +9,13 @@ keyword = @{
     "let"
 }
 
+call = {
+    "(" ~ (expression ~ ",")* ~ expression? ~ ")"
+}
+
 term = _{ integer | identifier }
 
-expression = _{ term }
+expression = { term ~ call* }
 
 expression_stmt = { expression }
 let_assign = { "let" ~ identifier ~ "=" ~ expression }

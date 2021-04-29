@@ -1,12 +1,15 @@
 use crate::grammar::*;
 use std::collections::HashMap;
 use crate::types::Type;
+use crate::builtins::{builtin_type};
 
 #[derive(Clone, Debug)]
 pub enum Instruction<'a> {
     Byte(u8),
     Getvar(&'a str),
+    PromoteFunction(&'a str),
     SetVar(&'a str),
+    Call(usize),
     Pop,
 }
 
@@ -35,20 +38,20 @@ impl ByteCodeGen {
         let mut res = vec![];
         match stmt {
             Statement::ExprStmt(node) => {
-                /*
                 match node {
-                    Expression::Call => {}
+                    Expression::Call(_) => {}
                     _ => {
                         return Ok(res);
                     }
                 };
-                 */  // optimization
 
                 let n = self.compile_expr(node);
                 match n {
                     Ok(x) => {
                         res.extend(x.0);
-                        res.push(Instruction::Pop);
+                        if x.1 != Type::Unit {
+                            res.push(Instruction::Pop);
+                        }
                     }
                     Err(x) => return Err(x),
                 }
@@ -73,20 +76,49 @@ impl ByteCodeGen {
         let tp: Type = match expr {
             Expression::Int(x) => {
                 if x > 255 || x < 0 {
-                    return Err(format!("Number {} is not in byte range", x));
+                    return Err(format!("Number '{}' is not in byte range", x));
                 }
                 res.push(Instruction::Byte(x as u8));
                 Type::Byte
             }
             Expression::Iden(x) => {
-                if !self.variables.contains_key(x) {
-                    return Err(format!("Variable {} is not defined", x));
+                if let Some(t) = builtin_type(x) {
+                    res.push(Instruction::PromoteFunction(x));
+                    t
+                } else {
+                    if !self.variables.contains_key(x) {
+                        return Err(format!("Variable '{}' is not defined", x));
+                    } else {
+                        res.push(Instruction::Getvar(x));
+                        self.variables.get(x).unwrap().to_owned()
+                    }
                 }
-                res.push(Instruction::Getvar(x));
-                self.variables.get(x).unwrap().to_owned()
             }
-            Expression::Call => {
-                todo!("Add call");
+            Expression::Call(mut x) => {
+                let callee = self.compile_expr(*x.0);
+                match callee {
+                    Ok(k) => {
+                        if let Type::BuiltinFunction(t) = k.1{
+                            let size = x.1.len();
+                            x.1.reverse();
+                            for ex in x.1 {
+                                let r = self.compile_expr(ex);
+                                match r {
+                                    Ok(x) => {
+                                        res.extend(x.0);
+                                    }
+                                    Err(x) => return Err(x),
+                                };
+                            }
+                            res.extend(k.0);
+                            res.push(Instruction::Call(size));
+                            *t
+                        } else {
+                            return Err(format!("Type '{}' is not callable", k.1.to_string()));
+                        }
+                    }
+                    Err(x) => return Err(x),
+                }
             }
         };
         Ok((res, tp))

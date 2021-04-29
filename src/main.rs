@@ -5,13 +5,16 @@ mod grammar;
 mod codegen;
 mod bytecode;
 mod types;
+mod builtins;
 
 fn main() {
     let program = "
-let x = 5
+let x = 65
 let y = x
+print(x, y)
 ";
     let res = parse(program);
+    // dbg!(&res);
     match res {
         Ok(x) => {
             let mut btc = ByteCodeGen::default();
