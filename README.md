@@ -1,6 +1,6 @@
 ## Snake
 
-Snake is a typescript-like programming language that compiles to [brainf*ck](https://esolangs.org/wiki/Brainfuck, an
+Snake is a typescript-like programming language that compiles to [brainf*ck](https://esolangs.org/wiki/Brainfuck), an
 esoteric language.
 
 Snake current supports:
@@ -24,4 +24,4 @@ print(1, 2, x)
 ```ts
 print(sum(60, 2, 3))
 ```
-(prints 'A'.)
+prints 'A'
