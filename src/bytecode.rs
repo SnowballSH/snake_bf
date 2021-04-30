@@ -108,6 +108,9 @@ impl ByteCodeGen {
                                 let r = self.compile_expr(ex);
                                 match r {
                                     Ok(x) => {
+                                        if x.1 == Type::Unit {
+                                            return Err("Cannot use Unit type as argument".to_string())
+                                        }
                                         res.extend(x.0);
                                     }
                                     Err(x) => return Err(x),

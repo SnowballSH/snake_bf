@@ -10,7 +10,7 @@ mod builtins;
 
 fn main() {
     let program = "
-print(sum(45, 20))
+print(sum(print(sum(35, 20, sum(8, 2))), 90))
 ";
     let res = parse(program);
     // dbg!(&res);
