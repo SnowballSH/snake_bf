@@ -29,6 +29,13 @@ impl<'a> CodeGen<'a> {
         res
     }
 
+    fn clean_raw(&mut self, size: usize) {
+        for _ in 0..size {
+            let alloc = self.allocations.pop().unwrap();
+            self.current_cell -= alloc.size;
+        }
+    }
+
     pub fn gen(&mut self, input: Vec<Instruction<'a>>) -> String {
         let mut res = String::new();
         for ins in input {
@@ -48,6 +55,7 @@ impl<'a> CodeGen<'a> {
             Instruction::Getvar(x) => {
                 let alloc = self.variables.get(x)
                     .unwrap().to_owned(); // testified in compiler
+                // dbg!(x, self.current_cell, alloc.start);
                 let y = "<".repeat(self.current_cell - alloc.start);  // [- # # - - *]  * = 5, # = 1, 2
                 let x = ">".repeat(self.current_cell - alloc.start);
 
@@ -75,10 +83,21 @@ impl<'a> CodeGen<'a> {
                 let callee = get_builtin(name, size).unwrap();
                 res += callee.as_str();
                 //dbg!(&self);
-                //res += &*self.clean(size);
 
                 let t = builtin_type(name).unwrap();
-                self.allocate(t.size());
+                let s = if let Type::BuiltinFunction(tt) = t {
+                    tt.size()
+                } else {
+                    t.size()
+                };
+                self.allocate(s);
+
+                // [ - a b c # ] move # to a
+                let x = "<".repeat(size);
+                let y = ">".repeat(size);
+                res += &*format!("{}{}[-]{}[{}+{}-]", "<".repeat(s), x, y, x, y);
+                res += &*">".repeat(s);
+                res += &*self.clean(size);
             }
         };
         res
