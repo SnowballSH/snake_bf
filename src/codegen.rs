@@ -13,7 +13,7 @@ struct Alloc {
 #[derive(Debug, Default)]
 pub struct CodeGen<'a> {
     variables: HashMap<&'a str, Alloc>,
-    functions: Vec<&'a str>,
+    functions: Vec<String>,
     allocations: Vec<Alloc>,
     current_cell: usize,
 }
@@ -27,13 +27,6 @@ impl<'a> CodeGen<'a> {
             res += "<[-]".repeat(alloc.size).as_str();
         }
         res
-    }
-
-    fn clean_raw(&mut self, size: usize) {
-        for _ in 0..size {
-            let alloc = self.allocations.pop().unwrap();
-            self.current_cell -= alloc.size;
-        }
     }
 
     pub fn gen(&mut self, input: Vec<Instruction<'a>>) -> String {
@@ -80,11 +73,11 @@ impl<'a> CodeGen<'a> {
 
             Instruction::Call(size) => {
                 let name = self.functions.pop().unwrap();
-                let callee = get_builtin(name, size).unwrap();
+                let callee = get_builtin(&*name, size).unwrap();
                 res += callee.as_str();
                 //dbg!(&self);
 
-                let t = builtin_type(name).unwrap();
+                let t = builtin_type(&*name).unwrap();
                 let s = if let Type::BuiltinFunction(tt) = t {
                     tt.size()
                 } else {

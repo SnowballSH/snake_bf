@@ -1,13 +1,15 @@
-use crate::grammar::*;
 use std::collections::HashMap;
+
+use crate::builtins::builtin_type;
+use crate::grammar::*;
 use crate::types::Type;
-use crate::builtins::{builtin_type};
+use crate::bytecode::Instruction::{PromoteFunction, Call};
 
 #[derive(Clone, Debug)]
 pub enum Instruction<'a> {
     Byte(u8),
     Getvar(&'a str),
-    PromoteFunction(&'a str),
+    PromoteFunction(String),
     SetVar(&'a str),
     Call(usize),
     Pop,
@@ -61,7 +63,7 @@ impl ByteCodeGen {
                 match n {
                     Ok(x) => {
                         if x.1 == Type::Unit {
-                            return Err("Cannot assign to Unit type".to_string())
+                            return Err("Cannot assign to Unit type".to_string());
                         }
                         self.variables.insert(node.0.to_string(), x.1);
                         res.extend(x.0);
@@ -86,7 +88,7 @@ impl ByteCodeGen {
             }
             Expression::Iden(x) => {
                 if let Some(t) = builtin_type(x) {
-                    res.push(Instruction::PromoteFunction(x));
+                    res.push(Instruction::PromoteFunction(x.to_string()));
                     t
                 } else {
                     if !self.variables.contains_key(x) {
@@ -101,7 +103,7 @@ impl ByteCodeGen {
                 let callee = self.compile_expr(*x.0);
                 match callee {
                     Ok(k) => {
-                        if let Type::BuiltinFunction(t) = k.1{
+                        if let Type::BuiltinFunction(t) = k.1 {
                             let size = x.1.len();
                             x.1.reverse();
                             for ex in x.1 {
@@ -109,7 +111,7 @@ impl ByteCodeGen {
                                 match r {
                                     Ok(x) => {
                                         if x.1 == Type::Unit {
-                                            return Err("Cannot use Unit type as argument".to_string())
+                                            return Err("Cannot use Unit type as argument".to_string());
                                         }
                                         res.extend(x.0);
                                     }
@@ -124,6 +126,37 @@ impl ByteCodeGen {
                         }
                     }
                     Err(x) => return Err(x),
+                }
+            }
+            Expression::Infix(x) => {
+                let left = self.compile_expr(x.left);
+                match left {
+                    Ok(left) => {
+                        res.extend(left.0);
+                        let right = self.compile_expr(x.right);
+                        match right {
+                            Ok(right) => {
+                                res.extend(right.0);
+                                let tt = right.1.get_instance_type(x.operator);
+                                match tt {
+                                    Some(t) => {
+                                        if let Type::BuiltinFunction(ttt) = t.clone() {
+                                            res.push(PromoteFunction(right.1.to_string() + x.operator));
+                                            res.push(Call(2));
+                                            *ttt
+                                        } else {
+                                            unreachable!()
+                                        }
+                                    }
+                                    None => return Err(format!(
+                                        "Instance '{}' does not exist on type {}",
+                                        x.operator, left.1.to_string()))
+                                }
+                            }
+                            Err(e) => return Err(e)
+                        }
+                    }
+                    Err(e) => return Err(e)
                 }
             }
         };

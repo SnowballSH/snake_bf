@@ -4,6 +4,8 @@ pub fn builtin_type(name: &str) -> Option<Type> {
     match name {
         "print" => Some(Type::BuiltinFunction(Box::new(Type::Unit))),
         "sum" => Some(Type::BuiltinFunction(Box::new(Type::Byte))),
+        "Byte+" => Type::Byte.get_instance_type("+"),
+        "Byte-" => Type::Byte.get_instance_type("-"),
         _ => None
     }
 }
@@ -30,6 +32,12 @@ pub fn get_builtin(name: &str, size: usize) -> Option<String> {
                     + &*">".repeat(i + 1));
             }
             Some(res + ">")
+        }
+        "Byte+" => {
+            Some("<[->+<]<[->>+<<]>>>".to_string())
+        }
+        "Byte-" => {
+            Some("<<[->>+<<]>[->-<]>>".to_string())
         }
         _ => None
     }

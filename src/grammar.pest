@@ -9,13 +9,27 @@ keyword = @{
     "let"
 }
 
+add = { "+" }
+sub = { "-" }
+mul = { "*" }
+div = { "/" }
+modulo = { "%" }
+
+operators = _{
+    add | sub | mul | div | modulo
+}
+
 call = {
     "(" ~ (expression ~ ",")* ~ expression? ~ ")"
 }
 
+infix = _{ expression_inner ~ (operators ~ expression_inner)+ }
+suffix = { term ~ call+ }
+
 term = _{ integer | identifier }
 
-expression = { term ~ call* }
+expression_inner = _{ suffix | term }
+expression = { infix | expression_inner }
 
 expression_stmt = { expression }
 let_assign = { "let" ~ identifier ~ "=" ~ expression }

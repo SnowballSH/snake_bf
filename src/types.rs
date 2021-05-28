@@ -2,7 +2,7 @@
 pub enum Type {
     Byte,
     Unit,
-    BuiltinFunction(Box<Type>)
+    BuiltinFunction(Box<Type>),
 }
 
 impl Type {
@@ -19,6 +19,31 @@ impl Type {
             Type::Byte => 1,
             Type::Unit => 0,
             Type::BuiltinFunction(_) => 0
+        }
+    }
+
+    pub fn get_instance_type(&self, name: &str) -> Option<Type> {
+        match self {
+            Type::Byte => {
+                match name {
+                    "+" => Some(Type::BuiltinFunction(Box::new(Type::Byte))),
+                    "-" => Some(Type::BuiltinFunction(Box::new(Type::Byte))),
+                    "*" => Some(Type::BuiltinFunction(Box::new(Type::Byte))),
+                    "/" => Some(Type::BuiltinFunction(Box::new(Type::Byte))),
+                    "%" => Some(Type::BuiltinFunction(Box::new(Type::Byte))),
+                    _ => None
+                }
+            }
+            Type::Unit => {
+                match name {
+                    _ => None
+                }
+            }
+            Type::BuiltinFunction(_) => {
+                match name {
+                    _ => None
+                }
+            }
         }
     }
 }

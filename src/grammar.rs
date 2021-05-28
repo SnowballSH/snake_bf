@@ -1,4 +1,3 @@
-#[macro_use]
 use pest_derive::*;
 
 use pest;
@@ -10,6 +9,14 @@ pub enum Expression<'a> {
     Int(i64),
     Iden(&'a str),
     Call((Box<Expression<'a>>, Vec<Expression<'a>>)), // callee, args
+    Infix(Box<Infix<'a>>)
+}
+
+#[derive(Debug)]
+pub struct Infix<'a> {
+    pub left: Expression<'a>,
+    pub operator: &'a str,
+    pub right: Expression<'a>,
 }
 
 #[derive(Debug)]
@@ -24,33 +31,58 @@ pub type Program<'a> = Vec<Statement<'a>>;
 #[grammar = "grammar.pest"]
 pub struct TSParser;
 
-fn parse_expression(pair: Pair<Rule>) -> Expression {
-    let mut inner = pair.into_inner();
-    let base = inner.next().unwrap();
-    let mut res = match base.as_rule() {
-        Rule::integer => Expression::Int(base.as_str().parse().unwrap()),
-        Rule::identifier => Expression::Iden(base.as_str()),
-        _ => unreachable!()
-    };
+fn infix<'a>(lhs: Expression<'a>, op: Pair<'a, Rule>, rhs: Expression<'a>) -> Expression<'a> {
+    Expression::Infix(Box::new(Infix {
+        left: lhs,
+        operator: op.as_str(),
+        right: rhs,
+    }))
+}
 
-    loop {
-        let dec = inner.next();
-        match dec {
-            Some(x) => {
-                match x.as_rule() {
-                    Rule::call => {
-                        let args: Vec<Pair<Rule>> = x.into_inner().collect();
-                        res = Expression::Call((
-                            Box::new(res),
-                            args.into_iter().map(|w| parse_expression(w)).collect(),
-                        ))
-                    }
+fn others(pair: Pair<Rule>) -> Expression {
+    let res = match pair.as_rule() {
+        Rule::integer => Expression::Int(pair.as_str().parse().unwrap()),
+        Rule::identifier => Expression::Iden(pair.as_str()),
+        Rule::suffix => {
+            let mut inner = pair.clone().into_inner();
+            let res = inner.next().unwrap();
+            let _args: Vec<Pair<Rule>> = inner.collect();
+            let mut args_iter = _args.into_iter();
+
+            let n = args_iter.next().unwrap();
+            let mut callee = match n.as_rule() {
+                Rule::call => Expression::Call(
+                    (Box::new(parse_expression(res)), n.into_inner()
+                    .map(|w| parse_expression(w))
+                    .collect())),
+                _ => unreachable!()
+            };
+
+            while let Some(xx) = args_iter.next() {
+                callee = match xx.as_rule() {
+                    Rule::call => Expression::Call(
+                        (Box::new(callee), xx.into_inner()
+                            .map(|w| parse_expression(w))
+                            .collect())),
                     _ => unreachable!()
                 }
             }
-            None => break
+
+            callee
         }
-    }
+        _ => unreachable!()
+    };
+
+    res
+}
+
+fn parse_expression(pair: Pair<Rule>) -> Expression {
+    let inner: Vec<Pair<Rule>> = pair.clone().into_inner().collect();
+    let res = if inner.len() != 0 && pair.clone().as_rule() == Rule::expression {
+        climb(pair)
+    } else {
+        others(pair)
+    };
 
     res
 }
@@ -96,4 +128,22 @@ pub fn parse(program: &str) -> Result<Program, pest::error::Error<Rule>> {
             Err(x)
         }
     }
+}
+
+use lazy_static::*;
+use pest::prec_climber::*;
+
+lazy_static! {
+    static ref PREC_CLIMBER: PrecClimber<Rule> = {
+        use Assoc::*;
+
+        PrecClimber::new(vec![
+            Operator::new(Rule::add, Left) | Operator::new(Rule::sub, Left),
+            Operator::new(Rule::mul, Left) | Operator::new(Rule::div, Left) | Operator::new(Rule::modulo, Left),
+        ])
+    };
+}
+
+pub fn climb(pair: Pair<Rule>) -> Expression {
+    PREC_CLIMBER.climb(pair.into_inner(), others, infix)
 }
