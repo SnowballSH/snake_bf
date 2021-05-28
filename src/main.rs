@@ -1,12 +1,14 @@
 use crate::grammar::parse;
 use crate::bytecode::ByteCodeGen;
 use std::fs;
+use crate::optimizer::optimize;
 
 mod grammar;
 mod codegen;
 mod bytecode;
 mod types;
 mod builtins;
+mod optimizer;
 
 fn main() {
     let program = "
@@ -24,8 +26,8 @@ print(sum(A, B, 2), sum(A, A, A));
             match res {
                 Ok(x) => {
                     let mut genner = codegen::CodeGen::default();
-                    let res = genner.gen(x);
-                    dbg!(&res);
+                    let mut res = genner.gen(x);
+                    res = optimize(res);
                     fs::write("test.bf", res).expect("Unable to write file");
                 }
                 Err(e) => {

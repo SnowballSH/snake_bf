@@ -1,6 +1,7 @@
-use crate::bytecode::Instruction;
 use std::collections::HashMap;
-use crate::builtins::{get_builtin, builtin_type};
+
+use crate::builtins::{builtin_type, get_builtin};
+use crate::bytecode::Instruction;
 use crate::types::Type;
 
 #[derive(Debug, Clone, Copy, Default)]
